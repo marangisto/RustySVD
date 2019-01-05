@@ -10,6 +10,8 @@ import Text.XML.HaXml.OneOfN
 import qualified Text.XML.HaXml.Schema.PrimitiveTypes as Xs
 import qualified Text.XML.HaXml.Schema.PrimitiveTypes as Xsd
 
+-- Some hs-boot imports are required, for fwd-declaring types.
+ 
 newtype Range = Range (Int, Int) deriving (Eq, Show)
 instance SchemaType Range where
     parseSchemaType s = error "FIXME: Range not implemented"
@@ -30,8 +32,6 @@ instance SchemaType VendorExtensions where
         (pos,e) <- posnElement [s]
         commit $ return (VendorExtensions ())
     schemaTypeToXML s (VendorExtensions _) = error "toXML not implemented"
- 
--- Some hs-boot imports are required, for fwd-declaring types.
  
 newtype StringType = StringType Xsd.XsdString deriving (Eq,Show)
 instance Restricts StringType Xsd.XsdString where
@@ -259,7 +259,7 @@ instance SimpleType NvicPrioBitsType where
     --      (RangeR (Occurs (Just 2) (Just 8)))
     simpleTypeText (NvicPrioBitsType x) = simpleTypeText x
  
-newtype DimableIdentifierType = DimableIdentifierType Xsd.XsdString deriving (Eq,Show)
+newtype DimableIdentifierType = DimableIdentifierType { unDimableIdentifierType :: Xsd.XsdString } deriving (Eq,Show)
 instance Restricts DimableIdentifierType Xsd.XsdString where
     restricts (DimableIdentifierType x) = x
 instance SchemaType DimableIdentifierType where
