@@ -17,36 +17,43 @@ main :: IO ()
 main = do
     let fn = "SAM3X8E.svd"
     xml <- readFile fn
-    let (Document _ _ root _) = xmlParse fn xml
-    let (Right Device{..}) = fst $ runParser elementDevice [CElem root noPos]
-    print device_schemaVersion -- :: Xsd.Decimal
-    whenJust device_vendor $ error . unhandled "Maybe StringType"
-    whenJust device_vendorID $ error . unhandled "Maybe IdentifierType"
-    print device_name -- :: IdentifierType
-    whenJust device_series $ error . unhandled "Maybe StringType"
-    print device_version -- :: StringType
-    print device_description -- :: StringType
-    whenJust device_licenseText $ error . unhandled "Maybe StringType"
-    whenJust device_cpu $ error . unhandled "Maybe CpuType"
-    whenJust device_headerSystemFilename $ error . unhandled "Maybe IdentifierType"
-    whenJust device_headerDefinitionsPrefix $ error . unhandled "Maybe IdentifierType"
-    print device_addressUnitBits -- :: ScaledNonNegativeInteger
-    print device_width -- :: ScaledNonNegativeInteger
-    whenJust device_size $ error . unhandled "Maybe ScaledNonNegativeInteger"
-    whenJust device_access $ error . unhandled "Maybe AccessType"
-    whenJust device_protection $ error . unhandled "Maybe ProtectionStringType"
-    whenJust device_resetValue $ error . unhandled "Maybe ScaledNonNegativeInteger"
-    whenJust device_resetMask $ error . unhandled "Maybe ScaledNonNegativeInteger"
-    let Peripherals ps = device_peripherals
-    putStrLn $ show (length ps) ++ " peripherals"
-    forM_ ps $ \PeripheralType{..} -> do
-        print peripheralType_name -- :: DimableIdentifierType
-        print peripheralType_version -- :: Maybe StringType
-        print peripheralType_description -- :: Maybe StringType
+    print $ parseDevice fn xml
 
-    let xs = filter (("PIO" `isPrefixOf`) . simpleTypeText . unDimableIdentifierType . peripheralType_name) ps
-    print $ map gpioPeripheral xs
-    whenJust device_vendorExtensions $ error . unhandled "Maybe VendorExtensions"
+parseDevice :: String -> String -> Device'
+parseDevice fn xml = seq (errorIfNotNull xs) Device'{..}
+    where (Document _ _ root _) = xmlParse fn xml
+          (Right Device{..}) = fst $ runParser elementDevice [CElem root noPos]
+          deviceSchemaVersion = 0 -- FIXME: read $ simpleTypeText device_schemaVersion
+          deviceName = simpleTypeText device_name
+          deviceVersion = simpleTypeText device_version
+          deviceDescription = stringTypeToString device_description
+          deviceAddressUnitBits = scaledNonNegativeIntegerToInt device_addressUnitBits
+          deviceWidth = scaledNonNegativeIntegerToInt device_width
+          devicePeripherals = map gpioPeripheral $ filter (peripheralPrefix "PIO") $ unPeripherals device_peripherals
+          xs = [ unhandled "device_vendor" <$> device_vendor 
+               , unhandled "device_vendorID" <$> device_vendorID 
+               , unhandled "device_series" <$> device_series 
+               , unhandled "device_licenseText" <$> device_licenseText 
+               , unhandled "device_cpu" <$> device_cpu 
+               , unhandled "device_headerSystemFilename" <$> device_headerSystemFilename 
+               , unhandled "device_headerDefinitionsPrefix" <$> device_headerDefinitionsPrefix 
+               , unhandled "device_size" <$> device_size 
+               , unhandled "device_access" <$> device_access 
+               , unhandled "device_protection" <$> device_protection 
+               , unhandled "device_resetValue" <$> device_resetValue 
+               , unhandled "device_resetMask" <$> device_resetMask 
+               , unhandled "device_vendorExtensions" <$> device_vendorExtensions 
+               ]
+
+data Device' = Device'
+    { deviceSchemaVersion   :: Int
+    , deviceName            :: String
+    , deviceVersion         :: String
+    , deviceDescription     :: String
+    , deviceAddressUnitBits :: Int
+    , deviceWidth           :: Int
+    , devicePeripherals     :: [Peripheral]
+    } deriving (Eq, Show)
 
 data Peripheral = Peripheral
     { peripheralName            :: String
@@ -221,4 +228,7 @@ unhandled :: Show a => String -> a -> String
 unhandled s x = "unhandled " ++ s ++ ": " ++ show x
 
 errorIfNotNull xs = let ys = catMaybes xs in if null ys then () else error $ intercalate "; " ys
+
+peripheralPrefix :: String -> PeripheralType -> Bool
+peripheralPrefix p = (p `isPrefixOf`) . simpleTypeText . unDimableIdentifierType . peripheralType_name
 

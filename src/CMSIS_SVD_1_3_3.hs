@@ -20,7 +20,7 @@ newtype SauRegionsConfig = SauRegionsConfig () deriving (Eq,Show)
 instance SchemaType SauRegionsConfig where
     parseSchemaType s = error "FIXME: SauRegionsConfig not implemented"
     schemaTypeToXML s (SauRegionsConfig _) = error "toXML not implemented"
-newtype Peripherals = Peripherals [PeripheralType] deriving (Eq,Show)
+newtype Peripherals = Peripherals { unPeripherals :: [PeripheralType] } deriving (Eq,Show)
 instance SchemaType Peripherals where
     parseSchemaType s = do
         (pos,e) <- posnElement [s]
