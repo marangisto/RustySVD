@@ -2,15 +2,16 @@
 module Main where
 
 import CMSIS_SVD_1_3_3
-import Text.XML.HaXml.Parse 
+import Text.XML.HaXml.Parse
 import Text.XML.HaXml.Types
 import Text.XML.HaXml.Posn
 import Text.XML.HaXml.Schema.PrimitiveTypes
 import Text.XML.HaXml.OneOfN
 import Text.ParserCombinators.Poly.Plain
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, intercalate)
 import Control.Monad.Extra
 import Control.Monad
+import Data.Maybe
 
 main :: IO ()
 main = do
@@ -101,7 +102,7 @@ register RegisterType{..} = do
         registerAccess = registerType_access
         registerResetValue = scaledNonNegativeIntegerToInt <$> registerType_resetValue
     let Just (FieldsType fs) = registerType_fields -- :: Maybe FieldsType
-    registerFields <- mapM fld fs
+        registerFields = map fld fs
     whenJust registerType_derivedFrom $ error . unhandled "Maybe DimableIdentifierType"
     whenJust registerType_dim $ error . unhandled "Maybe ScaledNonNegativeInteger"
     whenJust registerType_dimIncrement $ error . unhandled "Maybe ScaledNonNegativeInteger"
@@ -117,24 +118,24 @@ register RegisterType{..} = do
     whenJust registerType_readAction $ error . unhandled "Maybe ReadActionType"
     return Register{..}
 
-fld :: FieldType -> IO Field
-fld FieldType{..} = do
+fld :: FieldType -> Field
+fld FieldType{..} =
     let fieldName = dimableIdentifierToString fieldType_name
         fieldDesc = maybe "" stringTypeToString fieldType_description
         fieldPos =  choice7 fieldType_choice7
         fieldAccess = fieldType_access
-    -- unused stuff
-    whenJust fieldType_derivedFrom $ error . unhandled "Maybe DimableIdentifierType"
-    whenJust fieldType_dim $ error . unhandled "Maybe ScaledNonNegativeInteger"
-    whenJust fieldType_dimIncrement $ error . unhandled "Maybe ScaledNonNegativeInteger"
-    whenJust fieldType_dimIndex $ error . unhandled "Maybe DimIndexType"
-    whenJust fieldType_dimName $ error . unhandled "Maybe IdentifierType"
-    whenJust fieldType_dimArrayIndex $ error . unhandled "Maybe DimArrayIndexType"
-    whenJust fieldType_modifiedWriteValues $ error . unhandled "ModifiedWriteValuesType"
-    whenJust fieldType_writeConstraint $ error . unhandled "Maybe WriteConstraintType"
-    whenJust fieldType_readAction $ error . unhandled "Maybe ReadActionType"
-    when (not $ null fieldType_enumeratedValues) $ error . unhandled "[EnumerationType]" $ fieldType_enumeratedValues
-    return Field{..}
+    in seq (errorIfNotNull xs) Field{..}
+    where xs = [ unhandled "fieldType_derivedFrom" <$> fieldType_derivedFrom
+               , unhandled "fieldType_dim" <$> fieldType_dim
+               , unhandled "fieldType_dimIncrement" <$> fieldType_dimIncrement
+               , unhandled "fieldType_dimIndex" <$> fieldType_dimIndex
+               , unhandled "fieldType_dimName" <$> fieldType_dimName
+               , unhandled "fieldType_dimArrayIndex" <$> fieldType_dimArrayIndex
+               , unhandled "fieldType_modifiedWriteValues" <$> fieldType_modifiedWriteValues
+               , unhandled "fieldType_writeConstraint" <$> fieldType_writeConstraint
+               , unhandled "fieldType_readAction" <$> fieldType_readAction
+               , unhandled "fieldType_enumeratedValues" <$> listToMaybe fieldType_enumeratedValues
+               ]
 
 data Field = Field
     { fieldName     :: String
@@ -170,4 +171,6 @@ stringTypeToString = simpleTypeText . unStringType
 
 unhandled :: Show a => String -> a -> String
 unhandled s x = "unhandled " ++ s ++ ": " ++ show x
+
+errorIfNotNull xs = let ys = catMaybes xs in if null ys then () else error $ intercalate "; " ys
 
