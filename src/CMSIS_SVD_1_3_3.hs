@@ -275,7 +275,7 @@ instance SimpleType DimableIdentifierType where
     --      (Pattern ((%s)|(%s)[_A-Za-z]{1}[_A-Za-z0-9]*)|([_A-Za-z]{1}[_A-Za-z0-9]*(\[%s\])?)|([_A-Za-z]{1}[_A-Za-z0-9]*(%s)?[_A-Za-z0-9]*))
     simpleTypeText (DimableIdentifierType x) = simpleTypeText x
  
-newtype IdentifierType = IdentifierType Xsd.XsdString deriving (Eq,Show)
+newtype IdentifierType = IdentifierType { unIdentifierType :: Xsd.XsdString } deriving (Eq,Show)
 instance Restricts IdentifierType Xsd.XsdString where
     restricts (IdentifierType x) = x
 instance SchemaType IdentifierType where
