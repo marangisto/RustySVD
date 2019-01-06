@@ -78,65 +78,96 @@ gpioPeripheral PeripheralType{..} = do
 
 regs :: OneOf2 ClusterType RegisterType -> IO ()
 regs (OneOf2 _) = error "ClusterType not implemented"
-regs (TwoOf2 r) = register r
+regs (TwoOf2 r) = register r >>= print
 
-register :: RegisterType -> IO ()
+data Register = Register
+    { registerName          :: String
+    , registerDesc          :: String
+    , registerAlternative   :: Maybe (Either String String) -- alternateGroup / alternateRegister
+    , registerAddressOffset :: Int
+    , registerSize          :: Maybe Int
+    , registerAccess        :: Maybe AccessType
+    , registerResetValue    :: Maybe Int
+    , registerFields        :: [Field]
+    } deriving (Eq, Show)
+
+register :: RegisterType -> IO Register
 register RegisterType{..} = do
+    let registerName = dimableIdentifierToString registerType_name
+        registerDesc = maybe "" stringTypeToString registerType_description
+        registerAlternative = choice8 registerType_choice8
+        registerAddressOffset = scaledNonNegativeIntegerToInt registerType_addressOffset
+        registerSize = scaledNonNegativeIntegerToInt <$> registerType_size
+        registerAccess = registerType_access
+        registerResetValue = scaledNonNegativeIntegerToInt <$> registerType_resetValue
+    let Just (FieldsType fs) = registerType_fields -- :: Maybe FieldsType
+    registerFields <- mapM fld fs
     whenJust registerType_derivedFrom $ error . unhandled "Maybe DimableIdentifierType"
     whenJust registerType_dim $ error . unhandled "Maybe ScaledNonNegativeInteger"
     whenJust registerType_dimIncrement $ error . unhandled "Maybe ScaledNonNegativeInteger"
     whenJust registerType_dimIndex $ error . unhandled "Maybe DimIndexType"
     whenJust registerType_dimName $ error . unhandled "Maybe IdentifierType"
     whenJust registerType_dimArrayIndex $ error . unhandled "Maybe DimArrayIndexType"
-    print registerType_name -- :: DimableIdentifierType
     whenJust registerType_displayName $ error . unhandled "Maybe StringType"
-    print registerType_description -- :: Maybe StringType
-    print registerType_choice8 -- :: (Maybe (OneOf2 (Maybe (IdentifierType)) (Maybe (DimableIdentifierType))))
-    print registerType_addressOffset -- :: ScaledNonNegativeInteger
-    print registerType_size -- :: Maybe ScaledNonNegativeInteger
-    print registerType_access -- :: Maybe AccessType
     whenJust registerType_protection $ error . unhandled "Maybe ProtectionStringType"
-    print registerType_resetValue -- :: Maybe ScaledNonNegativeInteger
     whenJust registerType_resetMask $ error . unhandled "Maybe ScaledNonNegativeInteger"
     whenJust registerType_dataType $ error . unhandled "Maybe DataTypeType"
     whenJust registerType_modifiedWriteValues $ error . unhandled "Maybe ModifiedWriteValuesType"
     whenJust registerType_writeConstraint $ error . unhandled "Maybe WriteConstraintType"
     whenJust registerType_readAction $ error . unhandled "Maybe ReadActionType"
-    let Just (FieldsType fs) = registerType_fields -- :: Maybe FieldsType
-    mapM_ fld fs
+    return Register{..}
 
-fld :: FieldType -> IO ()
+fld :: FieldType -> IO Field
 fld FieldType{..} = do
-    print fieldType_name -- :: DimableIdentifierType
+    let fieldName = dimableIdentifierToString fieldType_name
+        fieldDesc = maybe "" stringTypeToString fieldType_description
+        fieldPos =  choice7 fieldType_choice7
+        fieldAccess = fieldType_access
+    -- unused stuff
     whenJust fieldType_derivedFrom $ error . unhandled "Maybe DimableIdentifierType"
     whenJust fieldType_dim $ error . unhandled "Maybe ScaledNonNegativeInteger"
     whenJust fieldType_dimIncrement $ error . unhandled "Maybe ScaledNonNegativeInteger"
     whenJust fieldType_dimIndex $ error . unhandled "Maybe DimIndexType"
     whenJust fieldType_dimName $ error . unhandled "Maybe IdentifierType"
     whenJust fieldType_dimArrayIndex $ error . unhandled "Maybe DimArrayIndexType"
-
-    print fieldType_description -- :: Maybe StringType
-    print fieldType_choice7 -- :: OneOf3 (ScaledNonNegativeInteger,ScaledNonNegativeInteger) (ScaledNonNegativeInteger,(Maybe (ScaledNonNegativeInteger))) BitRangeType
-          -- ^ Choice between:
-          --   
-          --   (1) Sequence of:
-          --   
-          --     * lsb
-          --   
-          --     * msb
-          --   
-          --   (2) Sequence of:
-          --   
-          --     * bitOffset
-          --   
-          --     * bitWidth
-          --   
-          --   (3) bitRange
-    print fieldType_access -- :: Maybe AccessType
     whenJust fieldType_modifiedWriteValues $ error . unhandled "ModifiedWriteValuesType"
     whenJust fieldType_writeConstraint $ error . unhandled "Maybe WriteConstraintType"
     whenJust fieldType_readAction $ error . unhandled "Maybe ReadActionType"
     when (not $ null fieldType_enumeratedValues) $ error . unhandled "[EnumerationType]" $ fieldType_enumeratedValues
+    return Field{..}
+
+data Field = Field
+    { fieldName     :: String
+    , fieldDesc     :: String
+    , fieldPos      :: Choice7
+    , fieldAccess   :: Maybe AccessType
+    } deriving (Eq, Show)
+
+data Choice7
+    = LsbMsb (Int, Int)
+    | OffsetWidth (Int, Maybe Int)
+    | BitRange String
+    deriving (Eq, Show)
+
+choice7 :: OneOf3 (ScaledNonNegativeInteger,ScaledNonNegativeInteger)
+                  (ScaledNonNegativeInteger,(Maybe (ScaledNonNegativeInteger)))
+                  BitRangeType
+        -> Choice7
+choice7 (OneOf3 (x, y)) = LsbMsb (scaledNonNegativeIntegerToInt x, scaledNonNegativeIntegerToInt y)
+choice7 (TwoOf3 (x, y)) = OffsetWidth (scaledNonNegativeIntegerToInt x, scaledNonNegativeIntegerToInt <$> y)
+choice7 (ThreeOf3 t) = BitRange $ read $ show t
+
+choice8 :: Maybe (OneOf2 (Maybe IdentifierType) (Maybe DimableIdentifierType)) -> Maybe (Either String String)
+choice8 (Just (OneOf2 (Just (IdentifierType x)))) = Just $ Left $ simpleTypeText x
+choice8 (Just (TwoOf2 (Just (DimableIdentifierType x)))) = Just $ Right $ simpleTypeText x
+choice8 _ = Nothing
+
+scaledNonNegativeIntegerToInt = read . simpleTypeText . unScaledNonNegativeInteger
+
+dimableIdentifierToString = simpleTypeText . unDimableIdentifierType
+
+stringTypeToString = simpleTypeText . unStringType
 
 unhandled :: Show a => String -> a -> String
 unhandled s x = "unhandled " ++ s ++ ": " ++ show x
+
