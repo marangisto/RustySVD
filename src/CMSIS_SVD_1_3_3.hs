@@ -33,7 +33,7 @@ instance SchemaType VendorExtensions where
         commit $ return (VendorExtensions ())
     schemaTypeToXML s (VendorExtensions _) = error "toXML not implemented"
  
-newtype StringType = StringType Xsd.XsdString deriving (Eq,Show)
+newtype StringType = StringType { unStringType :: Xsd.XsdString } deriving (Eq,Show)
 instance Restricts StringType Xsd.XsdString where
     restricts (StringType x) = x
 instance SchemaType StringType where
@@ -339,7 +339,7 @@ instance SimpleType DimIndexType where
     --      (Pattern [0-9]+\-[0-9]+|[A-Z]-[A-Z]|[_0-9a-zA-Z]+(,\s*[_0-9a-zA-Z]+)+)
     simpleTypeText (DimIndexType x) = simpleTypeText x
  
-newtype ScaledNonNegativeInteger = ScaledNonNegativeInteger Xsd.XsdString deriving (Eq,Show)
+newtype ScaledNonNegativeInteger = ScaledNonNegativeInteger { unScaledNonNegativeInteger :: Xsd.XsdString } deriving (Eq,Show)
 instance Restricts ScaledNonNegativeInteger Xsd.XsdString where
     restricts (ScaledNonNegativeInteger x) = x
 instance SchemaType ScaledNonNegativeInteger where

@@ -79,7 +79,7 @@ gpioPeripheral PeripheralType{..} = do
 
 regs :: OneOf2 ClusterType RegisterType -> IO ()
 regs (OneOf2 _) = error "ClusterType not implemented"
-regs (TwoOf2 r) = register r >>= print
+regs (TwoOf2 r) = print $ register r
 
 data Register = Register
     { registerName          :: String
@@ -92,8 +92,8 @@ data Register = Register
     , registerFields        :: [Field]
     } deriving (Eq, Show)
 
-register :: RegisterType -> IO Register
-register RegisterType{..} = do
+register :: RegisterType -> Register
+register RegisterType{..} =
     let registerName = dimableIdentifierToString registerType_name
         registerDesc = maybe "" stringTypeToString registerType_description
         registerAlternative = choice8 registerType_choice8
@@ -101,22 +101,23 @@ register RegisterType{..} = do
         registerSize = scaledNonNegativeIntegerToInt <$> registerType_size
         registerAccess = registerType_access
         registerResetValue = scaledNonNegativeIntegerToInt <$> registerType_resetValue
-    let Just (FieldsType fs) = registerType_fields -- :: Maybe FieldsType
+        Just (FieldsType fs) = registerType_fields -- :: Maybe FieldsType
         registerFields = map fld fs
-    whenJust registerType_derivedFrom $ error . unhandled "Maybe DimableIdentifierType"
-    whenJust registerType_dim $ error . unhandled "Maybe ScaledNonNegativeInteger"
-    whenJust registerType_dimIncrement $ error . unhandled "Maybe ScaledNonNegativeInteger"
-    whenJust registerType_dimIndex $ error . unhandled "Maybe DimIndexType"
-    whenJust registerType_dimName $ error . unhandled "Maybe IdentifierType"
-    whenJust registerType_dimArrayIndex $ error . unhandled "Maybe DimArrayIndexType"
-    whenJust registerType_displayName $ error . unhandled "Maybe StringType"
-    whenJust registerType_protection $ error . unhandled "Maybe ProtectionStringType"
-    whenJust registerType_resetMask $ error . unhandled "Maybe ScaledNonNegativeInteger"
-    whenJust registerType_dataType $ error . unhandled "Maybe DataTypeType"
-    whenJust registerType_modifiedWriteValues $ error . unhandled "Maybe ModifiedWriteValuesType"
-    whenJust registerType_writeConstraint $ error . unhandled "Maybe WriteConstraintType"
-    whenJust registerType_readAction $ error . unhandled "Maybe ReadActionType"
-    return Register{..}
+    in seq (errorIfNotNull xs) Register{..}
+    where xs = [ unhandled "registerType_derivedFrom" <$> registerType_derivedFrom
+               , unhandled "registerType_dim" <$> registerType_dim
+               , unhandled "registerType_dimIncrement" <$> registerType_dimIncrement
+               , unhandled "registerType_dimIndex" <$> registerType_dimIndex
+               , unhandled "registerType_dimName" <$> registerType_dimName
+               , unhandled "registerType_dimArrayIndex" <$> registerType_dimArrayIndex
+               , unhandled "registerType_displayName" <$> registerType_displayName
+               , unhandled "registerType_protection" <$> registerType_protection
+               , unhandled "registerType_resetMask" <$> registerType_resetMask
+               , unhandled "registerType_dataType" <$> registerType_dataType
+               , unhandled "registerType_modifiedWriteValues" <$> registerType_modifiedWriteValues
+               , unhandled "registerType_writeConstraint" <$> registerType_writeConstraint
+               , unhandled "registerType_readAction" <$> registerType_readAction
+               ]
 
 fld :: FieldType -> Field
 fld FieldType{..} =
