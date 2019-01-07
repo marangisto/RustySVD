@@ -1,15 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
-module ParseSVD
-    ( parseSVD
-    , Device'(..)
-    , AddressBlock(..)
-    , Interrupt(..)
-    , Peripheral(..)
-    , Cluster(..)
-    , Register(..)
-    , Field(..)
-    ) where
+module ParseSVD (parseSVD , module Types) where
 
+import Types
 import CMSIS_SVD_1_3_3
 import Text.XML.HaXml.Parse
 import Text.XML.HaXml.Types
@@ -51,28 +43,6 @@ parseDevice fn xml = seq (errorIfNotNull xs) Device'{..}
                , unhandled "device_vendorExtensions" <$> device_vendorExtensions 
                ]
 
-data Device' = Device'
-    { deviceSchemaVersion   :: Int
-    , deviceName            :: String
-    , deviceVersion         :: String
-    , deviceDescription     :: String
-    , deviceAddressUnitBits :: Int
-    , deviceWidth           :: Int
-    , devicePeripherals     :: [Peripheral]
-    } deriving (Eq, Show)
-
-data Peripheral = Peripheral
-    { peripheralName            :: String
-    , peripheralDescription     :: String
-    , peripheralVersion         :: Maybe String
-    , peripheralGroupName       :: Maybe String
-    , peripheralPrependToName   :: Maybe String
-    , peripheralBaseAddress     :: Int
-    , peripheralAddressBlock    :: [AddressBlock]
-    , peripheralInterrupt       :: [Interrupt]
-    , peripheralRegisters       :: [Either Cluster Register]
-    } deriving (Eq, Show)
-
 peripheral :: PeripheralType -> Peripheral
 peripheral PeripheralType{..} = seq (errorIfNotNull xs) Peripheral{..}
     where peripheralName = dimableIdentifierToString peripheralType_name
@@ -102,43 +72,15 @@ peripheral PeripheralType{..} = seq (errorIfNotNull xs) Peripheral{..}
                , unhandled "peripheralType_resetMask" <$> peripheralType_resetMask
                ]
 
-data Dimension = Dimension
-    { dimDimension  :: Int
-    , dimIncrement  :: Int
-    , dimIndex      :: String
-    } deriving (Eq, Show)
-
-dimension :: Maybe ScaledNonNegativeInteger -> Maybe ScaledNonNegativeInteger -> Maybe DimIndexType -> Maybe Dimension
-dimension (Just dim) (Just inc) (Just (DimIndexType idx)) = Just Dimension{..}
-    where dimDimension = scaledNonNegativeIntegerToInt dim
-          dimIncrement = scaledNonNegativeIntegerToInt inc
-          dimIndex = simpleTypeText idx
-dimension Nothing Nothing Nothing = Nothing
-dimension _ _ _ = error "unexpexted mix of dimension values"
-
-type Cluster = ()
-
 clusterRegister :: OneOf2 ClusterType RegisterType -> Either Cluster Register
 clusterRegister (OneOf2 _) = error "ClusterType not implemented"
 clusterRegister (TwoOf2 r) = Right $ register r
-
-data Register = Register
-    { registerName          :: String
-    , registerDescription   :: String
-    , registerAlternative   :: Maybe (Either String String) -- alternateGroup / alternateRegister
-    , registerAddressOffset :: Int
-    , registerSize          :: Maybe Int
-    , registerAccess        :: Maybe AccessType
-    , registerResetValue    :: Maybe Int
-    , registerDimension     :: Maybe Dimension
-    , registerFields        :: [Field]
-    } deriving (Eq, Show)
 
 register :: RegisterType -> Register
 register RegisterType{..} =
     let registerName = dimableIdentifierToString registerType_name
         registerDescription = maybe "" stringTypeToString registerType_description
-        registerAlternative = choice8 registerType_choice8
+        registerAlternative = alternative registerType_choice8
         registerAddressOffset = scaledNonNegativeIntegerToInt registerType_addressOffset
         registerSize = scaledNonNegativeIntegerToInt <$> registerType_size
         registerAccess = registerType_access
@@ -163,7 +105,7 @@ fld :: FieldType -> Field
 fld FieldType{..} =
     let fieldName = dimableIdentifierToString fieldType_name
         fieldDescription = maybe "" stringTypeToString fieldType_description
-        fieldPos =  choice7 fieldType_choice7
+        fieldPosition =  position fieldType_choice7
         fieldAccess = fieldType_access
     in seq (errorIfNotNull xs) Field{..}
     where xs = [ unhandled "fieldType_derivedFrom" <$> fieldType_derivedFrom
@@ -178,38 +120,18 @@ fld FieldType{..} =
                , unhandled "fieldType_enumeratedValues" <$> listToMaybe fieldType_enumeratedValues
                ]
 
-data Field = Field
-    { fieldName         :: String
-    , fieldDescription  :: String
-    , fieldPos          :: Choice7
-    , fieldAccess       :: Maybe AccessType
-    } deriving (Eq, Show)
-
-data Choice7
-    = LsbMsb (Int, Int)
-    | OffsetWidth (Int, Maybe Int)
-    | BitRange String
-    deriving (Eq, Show)
-
-choice7 :: OneOf3 (ScaledNonNegativeInteger,ScaledNonNegativeInteger)
+position :: OneOf3 (ScaledNonNegativeInteger,ScaledNonNegativeInteger)
                   (ScaledNonNegativeInteger,(Maybe (ScaledNonNegativeInteger)))
                   BitRangeType
-        -> Choice7
-choice7 (OneOf3 (x, y)) = LsbMsb (scaledNonNegativeIntegerToInt x, scaledNonNegativeIntegerToInt y)
-choice7 (TwoOf3 (x, y)) = OffsetWidth (scaledNonNegativeIntegerToInt x, scaledNonNegativeIntegerToInt <$> y)
-choice7 (ThreeOf3 t) = BitRange $ read $ show t
+         -> Position
+position (OneOf3 (x, y)) = LsbMsb (scaledNonNegativeIntegerToInt x, scaledNonNegativeIntegerToInt y)
+position (TwoOf3 (x, y)) = OffsetWidth (scaledNonNegativeIntegerToInt x, scaledNonNegativeIntegerToInt <$> y)
+position (ThreeOf3 t) = BitRange $ read $ show t
 
-choice8 :: Maybe (OneOf2 (Maybe IdentifierType) (Maybe DimableIdentifierType)) -> Maybe (Either String String)
-choice8 (Just (OneOf2 (Just (IdentifierType x)))) = Just $ Left $ simpleTypeText x
-choice8 (Just (TwoOf2 (Just (DimableIdentifierType x)))) = Just $ Right $ simpleTypeText x
-choice8 _ = Nothing
-
-data AddressBlock = AddressBlock
-    { addressBlockOffset        :: Int
-    , addressBlockSize          :: Int
-    , addressBlockUsage         :: String
-    , addressBlockProtection    :: Maybe String
-    } deriving (Eq, Show)
+alternative :: Maybe (OneOf2 (Maybe IdentifierType) (Maybe DimableIdentifierType)) -> Maybe (Either String String)
+alternative (Just (OneOf2 (Just (IdentifierType x)))) = Just $ Left $ simpleTypeText x
+alternative (Just (TwoOf2 (Just (DimableIdentifierType x)))) = Just $ Right $ simpleTypeText x
+alternative _ = Nothing
 
 addressBlock :: AddressBlockType -> AddressBlock
 addressBlock AddressBlockType{..} =
@@ -219,18 +141,21 @@ addressBlock AddressBlockType{..} =
         addressBlockProtection = simpleTypeText <$> addressBlockType_protection
     in AddressBlock{..}
 
-data Interrupt = Interrupt
-    { interruptName         :: String
-    , interruptDescription  :: String
-    , interruptValue        :: Int
-    } deriving (Eq, Show)
-
 interrupt :: InterruptType -> Interrupt
 interrupt InterruptType{..} =
     let interruptName = stringTypeToString interruptType_name
         interruptDescription = maybe "" simpleTypeText interruptType_description
         interruptValue = fromInteger interruptType_value
     in Interrupt{..}
+
+dimension :: Maybe ScaledNonNegativeInteger -> Maybe ScaledNonNegativeInteger -> Maybe DimIndexType -> Maybe Dimension
+dimension (Just dim) (Just inc) (Just (DimIndexType idx)) = Just $ Dimension
+    ( scaledNonNegativeIntegerToInt dim
+    , scaledNonNegativeIntegerToInt inc
+    , simpleTypeText idx
+    )
+dimension Nothing Nothing Nothing = Nothing
+dimension _ _ _ = error "unexpexted mix of dimension values"
 
 scaledNonNegativeIntegerToInt = read . simpleTypeText . unScaledNonNegativeInteger
 
