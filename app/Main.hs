@@ -36,4 +36,5 @@ printRegister Register{..} = do
             ++ ", size = " ++ maybe "" show registerSize
             ++ ", access = " ++ maybe "" show registerAccess
             ++ ", resetValue = " ++ maybe "" show registerResetValue
+            ++ ", dimension = " ++ maybe "" show registerDimension
             ++ ", fields = " ++ show (length registerFields)
