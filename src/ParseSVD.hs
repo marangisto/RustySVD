@@ -1,5 +1,14 @@
 {-# LANGUAGE RecordWildCards #-}
-module ParseSVD (parseSVD) where
+module ParseSVD
+    ( parseSVD
+    , Device'(..)
+    , AddressBlock(..)
+    , Interrupt(..)
+    , Peripheral(..)
+    , Cluster(..)
+    , Register(..)
+    , Field(..)
+    ) where
 
 import CMSIS_SVD_1_3_3
 import Text.XML.HaXml.Parse
