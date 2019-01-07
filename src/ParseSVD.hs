@@ -35,7 +35,7 @@ parseDevice fn xml = seq (errorIfNotNull xs) Device'{..}
           deviceDescription = stringTypeToString device_description
           deviceAddressUnitBits = scaledNonNegativeIntegerToInt device_addressUnitBits
           deviceWidth = scaledNonNegativeIntegerToInt device_width
-          devicePeripherals = map gpioPeripheral $ filter (peripheralPrefix "PIO") $ unPeripherals device_peripherals
+          devicePeripherals = map peripheral $ unPeripherals device_peripherals
           xs = [ unhandled "device_vendor" <$> device_vendor 
                , unhandled "device_vendorID" <$> device_vendorID 
                , unhandled "device_series" <$> device_series 
@@ -73,20 +73,19 @@ data Peripheral = Peripheral
     , peripheralRegisters       :: [Either Cluster Register]
     } deriving (Eq, Show)
 
-gpioPeripheral :: PeripheralType -> Peripheral
-gpioPeripheral PeripheralType{..} =
-    let peripheralName = dimableIdentifierToString peripheralType_name
-        peripheralDescription = maybe "" stringTypeToString peripheralType_description
-        peripheralVersion = stringTypeToString <$> peripheralType_version
-        peripheralGroupName = nameToString <$> peripheralType_groupName
-        peripheralPrependToName = identifierToString <$> peripheralType_prependToName
-        peripheralBaseAddress = scaledNonNegativeIntegerToInt peripheralType_baseAddress
-        peripheralAddressBlock = map addressBlock peripheralType_addressBlock
-        peripheralInterrupt = map interrupt peripheralType_interrupt
-        Just (RegistersType rs) = peripheralType_registers
-        peripheralRegisters = map clusterRegister rs
-    in seq (errorIfNotNull xs) Peripheral{..}
-    where xs = [ unhandled "peripheralType_derivedFrom" <$> peripheralType_derivedFrom
+peripheral :: PeripheralType -> Peripheral
+peripheral PeripheralType{..} = seq (errorIfNotNull xs) Peripheral{..}
+    where peripheralName = dimableIdentifierToString peripheralType_name
+          peripheralDescription = maybe "" stringTypeToString peripheralType_description
+          peripheralVersion = stringTypeToString <$> peripheralType_version
+          peripheralGroupName = nameToString <$> peripheralType_groupName
+          peripheralPrependToName = identifierToString <$> peripheralType_prependToName
+          peripheralBaseAddress = scaledNonNegativeIntegerToInt peripheralType_baseAddress
+          peripheralAddressBlock = map addressBlock peripheralType_addressBlock
+          peripheralInterrupt = map interrupt peripheralType_interrupt
+          Just (RegistersType rs) = peripheralType_registers
+          peripheralRegisters = map clusterRegister rs
+          xs = [ unhandled "peripheralType_derivedFrom" <$> peripheralType_derivedFrom
                , unhandled "peripheralType_dim" <$> peripheralType_dim
                , unhandled "peripheralType_dimIncrement" <$> peripheralType_dimIncrement
                , unhandled "peripheralType_dimIndex" <$> peripheralType_dimIndex
@@ -103,6 +102,20 @@ gpioPeripheral PeripheralType{..} =
                , unhandled "peripheralType_resetMask" <$> peripheralType_resetMask
                ]
 
+data Dimension = Dimension
+    { dimDimension  :: Int
+    , dimIncrement  :: Int
+    , dimIndex      :: String
+    } deriving (Eq, Show)
+
+dimension :: Maybe ScaledNonNegativeInteger -> Maybe ScaledNonNegativeInteger -> Maybe DimIndexType -> Maybe Dimension
+dimension (Just dim) (Just inc) (Just (DimIndexType idx)) = Just Dimension{..}
+    where dimDimension = scaledNonNegativeIntegerToInt dim
+          dimIncrement = scaledNonNegativeIntegerToInt inc
+          dimIndex = simpleTypeText idx
+dimension Nothing Nothing Nothing = Nothing
+dimension _ _ _ = error "unexpexted mix of dimension values"
+
 type Cluster = ()
 
 clusterRegister :: OneOf2 ClusterType RegisterType -> Either Cluster Register
@@ -117,6 +130,7 @@ data Register = Register
     , registerSize          :: Maybe Int
     , registerAccess        :: Maybe AccessType
     , registerResetValue    :: Maybe Int
+    , registerDimension     :: Maybe Dimension
     , registerFields        :: [Field]
     } deriving (Eq, Show)
 
@@ -129,13 +143,11 @@ register RegisterType{..} =
         registerSize = scaledNonNegativeIntegerToInt <$> registerType_size
         registerAccess = registerType_access
         registerResetValue = scaledNonNegativeIntegerToInt <$> registerType_resetValue
+        registerDimension = dimension registerType_dim registerType_dimIncrement registerType_dimIndex
         Just (FieldsType fs) = registerType_fields -- :: Maybe FieldsType
         registerFields = map fld fs
     in seq (errorIfNotNull xs) Register{..}
     where xs = [ unhandled "registerType_derivedFrom" <$> registerType_derivedFrom
-               , unhandled "registerType_dim" <$> registerType_dim
-               , unhandled "registerType_dimIncrement" <$> registerType_dimIncrement
-               , unhandled "registerType_dimIndex" <$> registerType_dimIndex
                , unhandled "registerType_dimName" <$> registerType_dimName
                , unhandled "registerType_dimArrayIndex" <$> registerType_dimArrayIndex
                , unhandled "registerType_displayName" <$> registerType_displayName
