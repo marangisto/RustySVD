@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Types (module Types) where
+module Types (module Types, AccessType(..)) where
 
 import CMSIS_SVD_1_3_3 (AccessType(..))
 
