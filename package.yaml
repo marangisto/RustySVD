@@ -24,6 +24,7 @@ dependencies:
 - HaXml
 - polyparse
 - extra
+- containers
 
 library:
   source-dirs: src
