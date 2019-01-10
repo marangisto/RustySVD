@@ -2,13 +2,13 @@
 module Main where
 
 import ParseSVD
-import GenPIO
+import PeripheralDecl
 import Data.Maybe
 
 main :: IO ()
 main = do
     dev <- parseSVD "SAM3X8E.svd"
-    mapM_ putStrLn $ concatMap genPIO $ devicePeripherals dev
+    mapM_ putStrLn $ concatMap peripheralDecl $ devicePeripherals dev
 
 printDevice :: Device' -> IO ()
 printDevice Device'{..} = do
