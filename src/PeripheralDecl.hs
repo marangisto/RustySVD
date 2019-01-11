@@ -27,7 +27,9 @@ peripheralStruct Peripheral{..} = StructItem attributes PublicV (mkIdent periphe
           variantData = StructD (map (either reservedStructField registerStructField) $ padRegisters $ removeMe rs) ()
           generics = Generics [] [] whereClause ()
           whereClause = WhereClause [] ()
-          attributes = [ Attribute Outer (Path False [PathSegment "repr" Nothing ()] ()) (delimTree Paren $ IdentTok "C") () ]
+          attributes = [ Attribute Outer (Path False [PathSegment "repr" Nothing ()] ()) (delimTree Paren $ IdentTok "C") ()
+                       , SugaredDoc Outer False (' ' : peripheralDescription) ()
+                       ]
           ([], rs) = partitionEithers peripheralRegisters
 
 padRegisters :: [Register] -> [Either Pad Register]
@@ -37,7 +39,7 @@ padRegisters rs = M.elems $ m `M.union` u
 
 registerStructField Register{..} = StructField (Just $ mkIdent $ lowerCase registerName) PublicV fieldType attributes ()
     where fieldType = PathTy Nothing (Path False [PathSegment (mkIdent $ rw registerAccess) (Just (AngleBracketed [] [u32Type] [] ())) ()] ()) ()
-          attributes = []
+          attributes = [ SugaredDoc Outer False (' ' : offset registerAddressOffset ++ registerDescription) () ]
 
 reservedStructField x = StructField (Just $ mkIdent $ "reserved" ++ hex x) InheritedV u32Type attributes ()
     where attributes = []
@@ -64,6 +66,9 @@ lowerCase = map toLower
 
 hex :: Int -> String
 hex x = "0x" ++ showHex x ""
+
+offset :: Int -> String
+offset x = "[" ++ show x ++ "]: "
 
 test :: IO ()
 test = do
