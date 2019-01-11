@@ -35,11 +35,11 @@ padRegisters rs = M.elems $ m `M.union` u
     where m = M.fromList [ (registerAddressOffset r, Right r) | r <- rs ]
           u = M.fromList [ (x, Left x) | x <- [ 0, 4..maximum $ M.keys m ] ]
 
-registerStructField Register{..} = StructField (Just $ mkIdent registerName) PublicV fieldType attributes ()
+registerStructField Register{..} = StructField (Just $ mkIdent $ lowerCase registerName) PublicV fieldType attributes ()
     where fieldType = PathTy Nothing (Path False [PathSegment (mkIdent $ rw registerAccess) (Just (AngleBracketed [] [u32Type] [] ())) ()] ()) ()
           attributes = []
 
-reservedStructField x = StructField (Just $ mkIdent $ "reserved_" ++ hex x) InheritedV u32Type attributes ()
+reservedStructField x = StructField (Just $ mkIdent $ "reserved" ++ hex x) InheritedV u32Type attributes ()
     where attributes = []
 
 u32Type = PathTy Nothing (Path False [PathSegment "u32" Nothing ()] ()) ()
