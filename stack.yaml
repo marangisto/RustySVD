@@ -41,6 +41,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - HaXml-1.25.5
+- language-rust-0.2.0.27
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

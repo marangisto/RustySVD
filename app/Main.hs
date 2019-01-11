@@ -3,12 +3,19 @@ module Main where
 
 import ParseSVD
 import PeripheralDecl
+import Language.Rust.Syntax
+import Language.Rust.Pretty
 import Data.Maybe
+import System.IO
 
 main :: IO ()
 main = do
     dev <- parseSVD "SAM3X8E.svd"
-    mapM_ putStrLn $ concatMap peripheralDecl $ devicePeripherals dev
+    let src :: SourceFile ()
+        src = SourceFile Nothing [] $ concat [ peripheralDecl p | p  <- devicePeripherals dev ]
+    writeSourceFile stdout src
+    putStrLn ""
+--    mapM_ putStrLn $ concatMap peripheralDecl $ devicePeripherals dev
 
 printDevice :: Device' -> IO ()
 printDevice Device'{..} = do

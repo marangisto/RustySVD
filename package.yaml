@@ -25,6 +25,8 @@ dependencies:
 - polyparse
 - extra
 - containers
+- language-rust
+- prettyprinter
 
 library:
   source-dirs: src

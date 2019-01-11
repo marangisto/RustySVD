@@ -1,58 +1,52 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, OverloadedStrings, TypeApplications #-}
 module PeripheralDecl (peripheralDecl) where
 
 import Types
+import Language.Rust.Parser
+import Language.Rust.Syntax as S
+import Language.Rust.Pretty
+import Language.Rust.Data.Ident
+import Language.Rust.Data.Position (Span(..), Position(..))
+import Data.List (isSuffixOf)
 import Data.Char (toLower, toUpper)
 import Data.Either (partitionEithers)
 import qualified Data.IntMap.Strict as M
 import Numeric (showHex)
+import System.IO
 
 type Pad = Int
 
-peripheralDecl :: Peripheral -> [String]
-peripheralDecl Peripheral{..} = concat
-    [ [ ("// " ++ peripheralDescription), "" ]
-    , makeStruct (initCaps peripheralName) body
-    , makePointer peripheralName peripheralBaseAddress
-    ]
-    where body = concatMap (either padDecl registerDecl) $ padRegisters rs
+peripheralDecl :: Peripheral -> [Item ()]
+peripheralDecl p = [ peripheralStruct p ]
+
+removeMe = map (\r@Register{..} -> r {registerName = filter (/='%') registerName})
+
+peripheralStruct :: Peripheral -> Item ()
+peripheralStruct Peripheral{..} = StructItem attributes PublicV (mkIdent peripheralName) variantData generics ()
+    where -- variantData = StructD [ registerStructField "xyz" "RW", reservedStructField "reserved_00" ] ()
+          variantData = StructD (map (either reservedStructField registerStructField) $ padRegisters $ removeMe rs) ()
+          generics = Generics [] [] whereClause ()
+          whereClause = WhereClause [] ()
+          attributes = [ Attribute Outer (Path False [PathSegment "repr" Nothing ()] ()) (delimTree Paren $ IdentTok "C") () ]
           ([], rs) = partitionEithers peripheralRegisters
 
-makeStruct :: String -> [String] -> [String]
-makeStruct name body = "#[repr(C)]" : strct : map ("    "++) body ++ [ "}", "" ]
-    where strct = "pub struct " ++ name ++ " {"
+padRegisters :: [Register] -> [Either Pad Register]
+padRegisters rs = M.elems $ m `M.union` u
+    where m = M.fromList [ (registerAddressOffset r, Right r) | r <- rs ]
+          u = M.fromList [ (x, Left x) | x <- [ 0, 4..maximum $ M.keys m ] ]
 
-makePointer :: String -> Int -> [String]
-makePointer name base = concat
-    [ "let "
-    , lowerCase name
-    , " = "
-    , hex base
-    , " as *const "
-    , initCaps name
-    , ";"
-    ] : [ "" ]
+registerStructField Register{..} = StructField (Just $ mkIdent registerName) PublicV fieldType attributes ()
+    where fieldType = PathTy Nothing (Path False [PathSegment (mkIdent $ rw registerAccess) (Just (AngleBracketed [] [u32Type] [] ())) ()] ()) ()
+          attributes = []
 
-registerDecl :: Register -> [String]
-registerDecl Register{..} = (:[]) $ concat
-    [ "pub " ++ map toLower registerName
-    , ": "
-    , rw registerAccess
-    , "<u32>"
-    , ","
-    , "    "
-    , "// [" ++ show registerAddressOffset ++  "] "
-    , registerDescription
-    ]
+reservedStructField x = StructField (Just $ mkIdent $ "reserved_" ++ hex x) InheritedV u32Type attributes ()
+    where attributes = []
 
-padDecl :: Pad -> [String]
-padDecl x = (:[]) $ concat
-    [ "reserved_"
-    , hex x
-    , ": "
-    , "u32"
-    , ","
-    ]
+u32Type = PathTy Nothing (Path False [PathSegment "u32" Nothing ()] ()) ()
+
+tokenTree x = Tree (Token (Span NoPosition NoPosition) x)
+
+delimTree d x = Tree (Delimited { S.span = Span NoPosition NoPosition, delim = d, tts = tokenTree x })
 
 rw :: Maybe AccessType -> String
 rw (Just AccessType_Read'only) = "RO"
@@ -71,8 +65,18 @@ lowerCase = map toLower
 hex :: Int -> String
 hex x = "0x" ++ showHex x ""
 
-padRegisters :: [Register] -> [Either Pad Register]
-padRegisters rs = M.elems $ m `M.union` u
-    where m = M.fromList [ (registerAddressOffset r, Right r) | r <- rs ]
-          u = M.fromList [ (x, Left x) | x <- [ 0, 4..maximum $ M.keys m ] ]
-
+test :: IO ()
+test = do
+    let src = parse' @(SourceFile Span) " \
+    \ // General Purpose Backup Register\n\
+    \\n\
+    \#[repr(C)]\n\
+    \pub struct Gpbr {\n\
+        \pub gpbr: RW<u32>,    // [0] General Purpose Backup Register\n\
+        \reserved_0xe0: u32,\n\
+        \pub wpmr: RW<u32>,    // [228] Write Protect Mode Register\n\
+    \}\n\
+    \\n\
+    \\n\
+    \// let gpbr = 0x400e1a90 as *const Gpbr;\n"
+    writeSourceFile stdout src
