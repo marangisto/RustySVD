@@ -16,9 +16,11 @@ newtype Range = Range (Int, Int) deriving (Eq, Show)
 instance SchemaType Range where
     parseSchemaType s = error "FIXME: Range not implemented"
     schemaTypeToXML s (Range _) = error "toXML not implemented"
-newtype SauRegionsConfig = SauRegionsConfig () deriving (Eq,Show)
+newtype SauRegionsConfig = SauRegionsConfig { unSauRegionsConfig :: [()] } deriving (Eq,Show)
 instance SchemaType SauRegionsConfig where
-    parseSchemaType s = error "FIXME: SauRegionsConfig not implemented"
+    parseSchemaType s = do
+        (pos, e) <- posnElement [s]
+        undefined   -- FIXME: handle this if we ever come accross it.
     schemaTypeToXML s (SauRegionsConfig _) = error "toXML not implemented"
 newtype Peripherals = Peripherals { unPeripherals :: [PeripheralType] } deriving (Eq,Show)
 instance SchemaType Peripherals where
