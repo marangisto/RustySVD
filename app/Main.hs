@@ -1,20 +1,31 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable, RecordWildCards, OverloadedStrings #-}
 module Main where
 
 import ParseSVD
 import PeripheralDecl
 import Language.Rust.Syntax
 import Language.Rust.Pretty
+import System.Console.CmdArgs
+import Control.Monad
 import Data.Maybe
 import System.IO
 
+data Options = Options
+    { files :: [String]
+    } deriving (Show, Eq, Data, Typeable)
+
+options :: Main.Options
+options = Main.Options { files = [] }
+
 main :: IO ()
 main = do
-    dev <- parseSVD "SAM3X8E.svd"
-    let src :: SourceFile ()
-        src = SourceFile Nothing [] $ concat [ peripheralDecl p | p  <- devicePeripherals dev ]
-    writeSourceFile stdout src
-    putStrLn ""
+    opts@Options{..} <- cmdArgs options
+    forM_ files $ \fn -> do
+        dev <- parseSVD fn
+        let src :: SourceFile ()
+            src = SourceFile Nothing [] $ concat [ peripheralDecl p | p  <- devicePeripherals dev ]
+        writeSourceFile stdout src
+        putStrLn ""
 --    mapM_ putStrLn $ concatMap peripheralDecl $ devicePeripherals dev
 
 printDevice :: Device' -> IO ()

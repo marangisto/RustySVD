@@ -27,6 +27,7 @@ dependencies:
 - containers
 - language-rust
 - prettyprinter
+- cmdargs
 
 library:
   source-dirs: src
