@@ -23,15 +23,15 @@ parseDevice fn xml = seq (errorIfNotNull xs) Device'{..}
           (Right Device{..}) = fst $ runParser elementDevice [CElem root noPos]
           deviceSchemaVersion = 0 -- FIXME: read $ simpleTypeText device_schemaVersion
           deviceName = simpleTypeText device_name
+          deviceVendor = simpleTypeText <$> device_vendor
+          deviceVendorID = simpleTypeText <$> device_vendorID
+          deviceSeries = simpleTypeText <$> device_series
           deviceVersion = simpleTypeText device_version
           deviceDescription = stringTypeToString device_description
           deviceAddressUnitBits = scaledNonNegativeIntegerToInt device_addressUnitBits
           deviceWidth = scaledNonNegativeIntegerToInt device_width
           devicePeripherals = map peripheral $ unPeripherals device_peripherals
-          xs = [ unhandled "device_vendor" <$> device_vendor 
-               , unhandled "device_vendorID" <$> device_vendorID 
-               , unhandled "device_series" <$> device_series 
-               , unhandled "device_licenseText" <$> device_licenseText 
+          xs = [ unhandled "device_licenseText" <$> device_licenseText 
                , unhandled "device_cpu" <$> device_cpu 
                , unhandled "device_headerSystemFilename" <$> device_headerSystemFilename 
                , unhandled "device_headerDefinitionsPrefix" <$> device_headerDefinitionsPrefix 

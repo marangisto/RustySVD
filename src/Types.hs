@@ -6,6 +6,9 @@ import CMSIS_SVD_1_3_3 (AccessType(..))
 data Device' = Device'
     { deviceSchemaVersion   :: Int
     , deviceName            :: String
+    , deviceVendor          :: Maybe String
+    , deviceVendorID        :: Maybe String
+    , deviceSeries          :: Maybe String
     , deviceVersion         :: String
     , deviceDescription     :: String
     , deviceAddressUnitBits :: Int
