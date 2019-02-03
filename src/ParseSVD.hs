@@ -20,8 +20,8 @@ parseSVD fn = parseDevice fn <$> readFile fn
 parseDevice :: String -> String -> Device'
 parseDevice fn xml = seq (errorIfNotNull xs) Device'{..}
     where (Document _ _ root _) = xmlParse fn xml
-          (Right Device{..}) = fst $ runParser elementDevice [CElem root noPos]
-          deviceSchemaVersion = 0 -- FIXME: read $ simpleTypeText device_schemaVersion
+          Device{..} = either error id $ fst $ runParser elementDevice [CElem root noPos]
+          deviceSchemaVersion = decimalToDouble device_schemaVersion
           deviceName = simpleTypeText device_name
           deviceVendor = simpleTypeText <$> device_vendor
           deviceVendorID = simpleTypeText <$> device_vendorID
@@ -159,6 +159,8 @@ dimension (Just dim) (Just inc) (Just (DimIndexType idx)) = Just $ Dimension
     )
 dimension Nothing Nothing Nothing = Nothing
 dimension _ _ _ = error "unexpexted mix of dimension values"
+
+decimalToDouble (Decimal x) = x
 
 scaledNonNegativeIntegerToInt = read . simpleTypeText . unScaledNonNegativeInteger
 

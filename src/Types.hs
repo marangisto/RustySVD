@@ -4,7 +4,7 @@ module Types (module Types, AccessType(..), EndianType(..), RevisionType(..)) wh
 import CMSIS_SVD_1_3_3 (AccessType(..), EndianType(..), RevisionType(..))
 
 data Device' = Device'
-    { deviceSchemaVersion           :: Int
+    { deviceSchemaVersion           :: Double
     , deviceName                    :: String
     , deviceVendor                  :: Maybe String
     , deviceVendorID                :: Maybe String
