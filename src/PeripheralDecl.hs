@@ -54,9 +54,9 @@ rw :: Maybe AccessType -> String
 rw (Just AccessType_Read'only) = "RO"
 rw (Just AccessType_Write'only) = "WO"
 rw (Just AccessType_Read'write) = "RW"
---rw (Just AccessType_WriteOnce)
---rw (Just AccessType_Read'writeOnce)
-rw _ = error "no access type specified"
+rw (Just AccessType_WriteOnce) = "WO"
+rw (Just AccessType_Read'writeOnce) = "RW"
+rw _ = "RW" -- we just don't know more precisely
 
 initCaps :: String -> String
 initCaps (x:xs) = toUpper x : map toLower xs

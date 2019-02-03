@@ -1,20 +1,48 @@
 {-# LANGUAGE RecordWildCards #-}
-module Types (module Types, AccessType(..)) where
+module Types (module Types, AccessType(..), EndianType(..), RevisionType(..)) where
 
-import CMSIS_SVD_1_3_3 (AccessType(..))
+import CMSIS_SVD_1_3_3 (AccessType(..), EndianType(..), RevisionType(..))
 
 data Device' = Device'
-    { deviceSchemaVersion   :: Int
-    , deviceName            :: String
-    , deviceVendor          :: Maybe String
-    , deviceVendorID        :: Maybe String
-    , deviceSeries          :: Maybe String
-    , deviceVersion         :: String
-    , deviceDescription     :: String
-    , deviceAddressUnitBits :: Int
-    , deviceWidth           :: Int
-    , devicePeripherals     :: [Peripheral]
+    { deviceSchemaVersion           :: Int
+    , deviceName                    :: String
+    , deviceVendor                  :: Maybe String
+    , deviceVendorID                :: Maybe String
+    , deviceSeries                  :: Maybe String
+    , deviceVersion                 :: String
+    , deviceDescription             :: String
+    , deviceLicenseText             :: Maybe String
+    , deviceHeaderSystemFilename    :: Maybe String
+    , deviceCPU                     :: Maybe CPU
+    , deviceAddressUnitBits         :: Int
+    , deviceWidth                   :: Int
+    , deviceSize                    :: Maybe Int
+    , deviceAccess                  :: Maybe AccessType
+    , deviceResetValue              :: Maybe Int
+    , deviceResetMask               :: Maybe Int
+    , devicePeripherals             :: [Peripheral]
+    , deviceVendorExtensions        :: Maybe ()
     } deriving (Eq, Show)
+
+data CPU = CPU
+    { cpuName                   :: String
+    , cpuRevision               :: RevisionType
+    , cpuEndian                 :: EndianType
+    , cpuMpuPresent             :: Maybe Bool   -- FIXME: consider removing Maybe on these
+    , cpuFpuPresent             :: Maybe Bool
+    , cpuFpuDP                  :: Maybe Bool
+    , cpuIcachePresent          :: Maybe Bool
+    , cpuDcachePresent          :: Maybe Bool
+    , cpuItcmPresent            :: Maybe Bool
+    , cpuDtcmPresent            :: Maybe Bool
+    , cpuVtorPresent            :: Maybe Bool
+    , cpuNvicPrioBits           :: Int
+    , cpuVendorSystickConfig    :: Bool
+    , cpuDeviceNumInterrupts    :: Maybe Int
+    , cpuSauNumRegions          :: Maybe Int
+    , cpuSauRegionsConfig       :: Maybe Int
+    }
+    deriving (Eq, Show)
 
 data Peripheral = Peripheral
     { peripheralName            :: String
@@ -38,6 +66,7 @@ data Register = Register
     , registerSize          :: Maybe Int
     , registerAccess        :: Maybe AccessType
     , registerResetValue    :: Maybe Int
+    , registerResetMask     :: Maybe Int
     , registerDimension     :: Maybe Dimension
     , registerFields        :: [Field]
     } deriving (Eq, Show)

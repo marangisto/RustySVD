@@ -28,19 +28,19 @@ parseDevice fn xml = seq (errorIfNotNull xs) Device'{..}
           deviceSeries = simpleTypeText <$> device_series
           deviceVersion = simpleTypeText device_version
           deviceDescription = stringTypeToString device_description
+          deviceLicenseText = stringTypeToString <$> device_licenseText
+          deviceHeaderSystemFilename = identifierToString <$> device_headerSystemFilename
+          deviceCPU = cpu <$> device_cpu
           deviceAddressUnitBits = scaledNonNegativeIntegerToInt device_addressUnitBits
           deviceWidth = scaledNonNegativeIntegerToInt device_width
+          deviceSize = scaledNonNegativeIntegerToInt <$> device_size
+          deviceAccess = device_access
+          deviceResetValue = scaledNonNegativeIntegerToInt <$> device_resetValue
+          deviceResetMask = scaledNonNegativeIntegerToInt <$> device_resetMask
           devicePeripherals = map peripheral $ unPeripherals device_peripherals
-          xs = [ unhandled "device_licenseText" <$> device_licenseText 
-               , unhandled "device_cpu" <$> device_cpu 
-               , unhandled "device_headerSystemFilename" <$> device_headerSystemFilename 
-               , unhandled "device_headerDefinitionsPrefix" <$> device_headerDefinitionsPrefix 
-               , unhandled "device_size" <$> device_size 
-               , unhandled "device_access" <$> device_access 
+          deviceVendorExtensions = vendorExtensions <$> device_vendorExtensions
+          xs = [ unhandled "device_headerDefinitionsPrefix" <$> device_headerDefinitionsPrefix 
                , unhandled "device_protection" <$> device_protection 
-               , unhandled "device_resetValue" <$> device_resetValue 
-               , unhandled "device_resetMask" <$> device_resetMask 
-               , unhandled "device_vendorExtensions" <$> device_vendorExtensions 
                ]
 
 peripheral :: PeripheralType -> Peripheral
@@ -85,6 +85,7 @@ register RegisterType{..} =
         registerSize = scaledNonNegativeIntegerToInt <$> registerType_size
         registerAccess = registerType_access
         registerResetValue = scaledNonNegativeIntegerToInt <$> registerType_resetValue
+        registerResetMask = scaledNonNegativeIntegerToInt <$> registerType_resetMask
         registerDimension = dimension registerType_dim registerType_dimIncrement registerType_dimIndex
         Just (FieldsType fs) = registerType_fields -- :: Maybe FieldsType
         registerFields = map fld fs
@@ -94,7 +95,6 @@ register RegisterType{..} =
                , unhandled "registerType_dimArrayIndex" <$> registerType_dimArrayIndex
                , unhandled "registerType_displayName" <$> registerType_displayName
                , unhandled "registerType_protection" <$> registerType_protection
-               , unhandled "registerType_resetMask" <$> registerType_resetMask
                , unhandled "registerType_dataType" <$> registerType_dataType
                , unhandled "registerType_modifiedWriteValues" <$> registerType_modifiedWriteValues
                , unhandled "registerType_writeConstraint" <$> registerType_writeConstraint
@@ -119,6 +119,9 @@ fld FieldType{..} =
                , unhandled "fieldType_readAction" <$> fieldType_readAction
                , unhandled "fieldType_enumeratedValues" <$> listToMaybe fieldType_enumeratedValues
                ]
+
+cpu :: CpuType -> CPU
+cpu = undefined
 
 position :: OneOf3 (ScaledNonNegativeInteger,ScaledNonNegativeInteger)
                   (ScaledNonNegativeInteger,(Maybe (ScaledNonNegativeInteger)))
@@ -175,3 +178,4 @@ errorIfNotNull xs = let ys = catMaybes xs in if null ys then () else error $ int
 peripheralPrefix :: String -> PeripheralType -> Bool
 peripheralPrefix p = (p `isPrefixOf`) . simpleTypeText . unDimableIdentifierType . peripheralType_name
 
+vendorExtensions _ = ()
