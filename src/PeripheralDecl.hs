@@ -35,10 +35,10 @@ removeMe = map (\r@Register{..} -> r {registerName = filter (/='%') registerName
 
 peripheralFun :: Peripheral -> Item ()
 peripheralFun Peripheral{..} = Fn [] PublicV (mkIdent $ lowerCase peripheralName)
-    (FnDecl [] (Just (Ptr Immutable (PathTy Nothing (Path False [PathSegment name Nothing ()] ()) ()) ())) False ())
+    (FnDecl [] (Just (Ptr Mutable (PathTy Nothing (Path False [PathSegment name Nothing ()] ()) ()) ())) False ())
     Normal NotConst Rust (Generics [] [] (WhereClause [] ()) ())
     (Block [ NoSemi (Cast [] (Lit [] (Int Dec addr Unsuffixed ()) ())
-             (Ptr Immutable (PathTy Nothing (Path False [PathSegment name Nothing ()] ()) ()) ()) ()) ()
+             (Ptr Mutable (PathTy Nothing (Path False [PathSegment name Nothing ()] ()) ()) ()) ()) ()
            ] Normal ()) ()
     where name = mkIdent peripheralName
           addr = fromIntegral peripheralBaseAddress
