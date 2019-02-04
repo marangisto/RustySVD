@@ -11,11 +11,19 @@ import Data.Maybe
 import System.IO
 
 data Options = Options
-    { files :: [String]
+    { files :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
 options :: Main.Options
-options = Main.Options { files = [] }
+options = Main.Options
+    { files = def &= args &= typ "FILES"
+    } &=
+    verbosity &=
+    help "Generate device descriptions from SVD files" &=
+    summary "RustySVD v0.0.0, (c) Bengt Marten Agren 2018-2019" &=
+    details [ "RustySVD generated device header files for ARM-based"
+            , "MCUs based on vendor SVD files (see CMSIS)."
+            ]
 
 main :: IO ()
 main = do
