@@ -13,12 +13,14 @@ import System.IO
 
 data Options = Options
     { schema_version :: Bool
+    , parse_rust :: Bool
     , files :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
 options :: Main.Options
 options = Main.Options
     { schema_version = def &= help "Show schema version"
+    , parse_rust = def &= help "Parse Rust source files"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -34,11 +36,12 @@ main = do
     mapM_ (process opts) files
 
 process :: Options -> FilePath -> IO ()
+process Options{parse_rust=True,..} fn = parseRust fn
 process Options{schema_version=True,..} fn = putStrLn . ((fn++": ")++) =<< getSchemaVersion fn
 process Options{..} fn = do
         dev <- parseSVD fn
         let src :: SourceFile ()
-            src = SourceFile Nothing [] $ concat [ peripheralDecl p | p  <- devicePeripherals dev ]
+            src = SourceFile Nothing attributes $ preamble ++ concat [ peripheralDecl p | p  <- devicePeripherals dev ]
         writeSourceFile stdout src
         putStrLn ""
 

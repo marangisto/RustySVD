@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings, TypeApplications #-}
-module PeripheralDecl (peripheralDecl) where
+module PeripheralDecl (attributes, preamble, peripheralDecl, parseRust) where
 
 import Types
 import Language.Rust.Parser
@@ -16,10 +16,32 @@ import System.IO
 
 type Pad = Int
 
+attributes :: [Attribute ()]
+attributes = [ Attribute Inner (Path False [PathSegment "no_std" Nothing ()] ()) (Stream []) () ] 
+
+preamble :: [Item ()]
+preamble =
+    [ Use [] InheritedV (UseTreeNested (Path False [PathSegment "volatile_register" Nothing ()] ())
+          [ UseTreeSimple (Path False [PathSegment "RO" Nothing ()] ()) Nothing ()
+          , UseTreeSimple (Path False [PathSegment "WO" Nothing ()] ()) Nothing ()
+          , UseTreeSimple (Path False [PathSegment "RW" Nothing ()] ()) Nothing ()
+          ] ()) ()
+    ]
+
 peripheralDecl :: Peripheral -> [Item ()]
-peripheralDecl p = [ peripheralStruct p ]
+peripheralDecl p = [ peripheralStruct p, peripheralFun p ]
 
 removeMe = map (\r@Register{..} -> r {registerName = filter (/='%') registerName})
+
+peripheralFun :: Peripheral -> Item ()
+peripheralFun Peripheral{..} = Fn [] PublicV (mkIdent $ lowerCase peripheralName)
+    (FnDecl [] (Just (Ptr Immutable (PathTy Nothing (Path False [PathSegment name Nothing ()] ()) ()) ())) False ())
+    Normal NotConst Rust (Generics [] [] (WhereClause [] ()) ())
+    (Block [ NoSemi (Cast [] (Lit [] (Int Dec addr Unsuffixed ()) ())
+             (Ptr Immutable (PathTy Nothing (Path False [PathSegment name Nothing ()] ()) ()) ()) ()) ()
+           ] Normal ()) ()
+    where name = mkIdent peripheralName
+          addr = fromIntegral peripheralBaseAddress
 
 peripheralStruct :: Peripheral -> Item ()
 peripheralStruct Peripheral{..} = StructItem attributes PublicV (mkIdent peripheralName) variantData generics ()
@@ -70,18 +92,7 @@ hex x = "0x" ++ showHex x ""
 offset :: Int -> String
 offset x = "[" ++ show x ++ "]: "
 
-test :: IO ()
-test = do
-    let src = parse' @(SourceFile Span) " \
-    \ // General Purpose Backup Register\n\
-    \\n\
-    \#[repr(C)]\n\
-    \pub struct Gpbr {\n\
-        \pub gpbr: RW<u32>,    // [0] General Purpose Backup Register\n\
-        \reserved_0xe0: u32,\n\
-        \pub wpmr: RW<u32>,    // [228] Write Protect Mode Register\n\
-    \}\n\
-    \\n\
-    \\n\
-    \// let gpbr = 0x400e1a90 as *const Gpbr;\n"
-    writeSourceFile stdout src
+parseRust :: FilePath -> IO ()
+parseRust fn = print =<< parse' @(SourceFile Span) <$> readInputStream fn
+-- parseRust fn = writeSourceFile stdout =<< parse' @(SourceFile Span) <$> readInputStream fn
+
