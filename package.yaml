@@ -28,6 +28,7 @@ dependencies:
 - language-rust
 - prettyprinter
 - cmdargs
+- tagsoup
 
 library:
   source-dirs: src

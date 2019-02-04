@@ -6,17 +6,20 @@ import PeripheralDecl
 import Language.Rust.Syntax
 import Language.Rust.Pretty
 import System.Console.CmdArgs
+import Text.HTML.TagSoup
 import Control.Monad
 import Data.Maybe
 import System.IO
 
 data Options = Options
-    { files :: [FilePath]
+    { schema_version :: Bool
+    , files :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
 options :: Main.Options
 options = Main.Options
-    { files = def &= args &= typ "FILES"
+    { schema_version = def &= help "Show schema version"
+    , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
     help "Generate device descriptions from SVD files" &=
@@ -28,42 +31,18 @@ options = Main.Options
 main :: IO ()
 main = do
     opts@Options{..} <- cmdArgs options
-    forM_ files $ \fn -> do
+    mapM_ (process opts) files
+
+process :: Options -> FilePath -> IO ()
+process Options{schema_version=True,..} fn = putStrLn . ((fn++": ")++) =<< getSchemaVersion fn
+process Options{..} fn = do
         dev <- parseSVD fn
         let src :: SourceFile ()
             src = SourceFile Nothing [] $ concat [ peripheralDecl p | p  <- devicePeripherals dev ]
         writeSourceFile stdout src
         putStrLn ""
---    mapM_ putStrLn $ concatMap peripheralDecl $ devicePeripherals dev
 
-printDevice :: Device' -> IO ()
-printDevice Device'{..} = do
-    putStrLn $ deviceName ++ " : " ++ deviceDescription ++ ", version " ++ deviceVersion
-    putStrLn $ "addressUnitBits = " ++ show deviceAddressUnitBits
-            ++ ", width = " ++ show deviceWidth
-            ++ ", peripherals = " ++ show (length devicePeripherals)
-    mapM_ printPeripheral devicePeripherals
+getSchemaVersion :: FilePath -> IO String
+getSchemaVersion fn = f . parseTags <$> readFile fn
+    where f = fromAttrib "schemaVersion" . head . dropWhile (~/= ("<device>" :: String))
 
-printPeripheral :: Peripheral -> IO ()
-printPeripheral Peripheral{..} = do
-    putStrLn $ "\t" ++ peripheralName ++ " : " ++ peripheralDescription ++ ", version " ++ fromMaybe "?" peripheralVersion
-    putStrLn $ "\t\tgroupName = " ++ fromMaybe "" peripheralGroupName
-            ++ ", prependToName = " ++ fromMaybe "" peripheralPrependToName
-            ++ ", baseAddress = " ++ show peripheralBaseAddress 
-            ++ ", registers = " ++ show (length peripheralRegisters)
-    putStrLn $ "\t\taddressBlock = " ++ show peripheralAddressBlock
-    putStrLn $ "\t\tinterrupt = " ++ show peripheralInterrupt
-    mapM_ (either printCluster printRegister) peripheralRegisters
-
-printCluster :: Cluster -> IO ()
-printCluster = error "Cluster not yet implemented"
-
-printRegister :: Register -> IO ()
-printRegister Register{..} = do
-    putStrLn $ "\t\t\t" ++ registerName ++ " : " ++ registerDescription
-    putStrLn $ "\t\t\t\taddressOffset = " ++ show registerAddressOffset
-            ++ ", size = " ++ maybe "" show registerSize
-            ++ ", access = " ++ maybe "" show registerAccess
-            ++ ", resetValue = " ++ maybe "" show registerResetValue
-            ++ ", dimension = " ++ maybe "" show registerDimension
-            ++ ", fields = " ++ show (length registerFields)
