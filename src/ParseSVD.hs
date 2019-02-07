@@ -46,6 +46,7 @@ parseDevice fn xml = seq (errorIfNotNull xs) Device'{..}
 peripheral :: PeripheralType -> Peripheral
 peripheral PeripheralType{..} = seq (errorIfNotNull xs) Peripheral{..}
     where peripheralName = dimableIdentifierToString peripheralType_name
+          peripheralDerivedFrom = dimableIdentifierToString <$> peripheralType_derivedFrom
           peripheralDescription = maybe "" stringTypeToString peripheralType_description
           peripheralVersion = stringTypeToString <$> peripheralType_version
           peripheralGroupName = nameToString <$> peripheralType_groupName
@@ -53,10 +54,10 @@ peripheral PeripheralType{..} = seq (errorIfNotNull xs) Peripheral{..}
           peripheralBaseAddress = scaledNonNegativeIntegerToInt peripheralType_baseAddress
           peripheralAddressBlock = map addressBlock peripheralType_addressBlock
           peripheralInterrupt = map interrupt peripheralType_interrupt
-          Just (RegistersType rs) = peripheralType_registers
+--          Just (RegistersType rs) = peripheralType_registers
+          rs = maybe [] registersType_choice0 peripheralType_registers
           peripheralRegisters = map clusterRegister rs
-          xs = [ unhandled "peripheralType_derivedFrom" <$> peripheralType_derivedFrom
-               , unhandled "peripheralType_dim" <$> peripheralType_dim
+          xs = [ unhandled "peripheralType_dim" <$> peripheralType_dim
                , unhandled "peripheralType_dimIncrement" <$> peripheralType_dimIncrement
                , unhandled "peripheralType_dimIndex" <$> peripheralType_dimIndex
                , unhandled "peripheralType_dimName" <$> peripheralType_dimName
@@ -79,6 +80,7 @@ clusterRegister (TwoOf2 r) = Right $ register r
 register :: RegisterType -> Register
 register RegisterType{..} =
     let registerName = dimableIdentifierToString registerType_name
+        registerDisplayName = stringTypeToString <$> registerType_displayName
         registerDescription = maybe "" stringTypeToString registerType_description
         registerAlternative = alternative registerType_choice8
         registerAddressOffset = scaledNonNegativeIntegerToInt registerType_addressOffset
@@ -93,7 +95,6 @@ register RegisterType{..} =
     where xs = [ unhandled "registerType_derivedFrom" <$> registerType_derivedFrom
                , unhandled "registerType_dimName" <$> registerType_dimName
                , unhandled "registerType_dimArrayIndex" <$> registerType_dimArrayIndex
-               , unhandled "registerType_displayName" <$> registerType_displayName
                , unhandled "registerType_protection" <$> registerType_protection
                , unhandled "registerType_dataType" <$> registerType_dataType
                , unhandled "registerType_modifiedWriteValues" <$> registerType_modifiedWriteValues

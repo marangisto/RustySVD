@@ -50,18 +50,19 @@ peripheralStruct Peripheral{..} = StructItem attributes PublicV (mkIdent periphe
           generics = Generics [] [] whereClause ()
           whereClause = WhereClause [] ()
           attributes = [ Attribute Outer (Path False [PathSegment "repr" Nothing ()] ()) (delimTree Paren $ IdentTok "C") ()
-                       , SugaredDoc Outer False (' ' : peripheralDescription) ()
+                       , SugaredDoc Outer False (' ' : unwords (words peripheralDescription)) ()
                        ]
           ([], rs) = partitionEithers peripheralRegisters
 
 padRegisters :: [Register] -> [Either Pad Register]
+padRegisters [] = []
 padRegisters rs = M.elems $ m `M.union` u
     where m = M.fromList [ (registerAddressOffset r, Right r) | r <- rs ]
           u = M.fromList [ (x, Left x) | x <- [ 0, 4..maximum $ M.keys m ] ]
 
 registerStructField Register{..} = StructField (Just $ mkIdent $ lowerCase registerName) PublicV fieldType attributes ()
     where fieldType = PathTy Nothing (Path False [PathSegment (mkIdent $ rw registerAccess) (Just (AngleBracketed [] [u32Type] [] ())) ()] ()) ()
-          attributes = [ SugaredDoc Outer False (' ' : offset registerAddressOffset ++ registerDescription) () ]
+          attributes = [ SugaredDoc Outer False (' ' : offset registerAddressOffset ++ unwords (words registerDescription)) () ]
 
 reservedStructField x = StructField (Just $ mkIdent $ "reserved" ++ hex x) InheritedV u32Type attributes ()
     where attributes = []

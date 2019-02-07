@@ -46,6 +46,7 @@ data CPU = CPU
 
 data Peripheral = Peripheral
     { peripheralName            :: String
+    , peripheralDerivedFrom     :: Maybe String
     , peripheralDescription     :: String
     , peripheralVersion         :: Maybe String
     , peripheralGroupName       :: Maybe String
@@ -60,6 +61,7 @@ type Cluster = ()
 
 data Register = Register
     { registerName          :: String
+    , registerDisplayName   :: Maybe String
     , registerDescription   :: String
     , registerAlternative   :: Maybe (Either String String) -- alternateGroup / alternateRegister
     , registerAddressOffset :: Int
