@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Types (module Types, AccessType(..), EndianType(..), RevisionType(..)) where
 
-import CMSIS_SVD_1_3_3 (AccessType(..), EndianType(..), RevisionType(..))
+import CMSIS_SVD_1_3_3 (AccessType(..), EndianType(..), RevisionType(..), ModifiedWriteValuesType(..))
 
 data Device' = Device'
     { deviceSchemaVersion           :: Double
@@ -52,6 +52,7 @@ data Peripheral = Peripheral
     , peripheralGroupName       :: Maybe String
     , peripheralPrependToName   :: Maybe String
     , peripheralBaseAddress     :: Int
+    , peripheralSize            :: Maybe Int
     , peripheralAddressBlock    :: [AddressBlock]
     , peripheralInterrupt       :: [Interrupt]
     , peripheralRegisters       :: [Either Cluster Register]
@@ -69,6 +70,7 @@ data Register = Register
     , registerAccess        :: Maybe AccessType
     , registerResetValue    :: Maybe Int
     , registerResetMask     :: Maybe Int
+    , registerModifiedWriteValues   :: Maybe ModifiedWriteValuesType
     , registerDimension     :: Maybe Dimension
     , registerFields        :: [Field]
     } deriving (Eq, Show)

@@ -52,6 +52,7 @@ peripheral PeripheralType{..} = seq (errorIfNotNull xs) Peripheral{..}
           peripheralGroupName = nameToString <$> peripheralType_groupName
           peripheralPrependToName = identifierToString <$> peripheralType_prependToName
           peripheralBaseAddress = scaledNonNegativeIntegerToInt peripheralType_baseAddress
+          peripheralSize = scaledNonNegativeIntegerToInt <$> peripheralType_size
           peripheralAddressBlock = map addressBlock peripheralType_addressBlock
           peripheralInterrupt = map interrupt peripheralType_interrupt
 --          Just (RegistersType rs) = peripheralType_registers
@@ -66,7 +67,6 @@ peripheral PeripheralType{..} = seq (errorIfNotNull xs) Peripheral{..}
                , unhandled "peripheralType_appendToName" <$> peripheralType_appendToName
                , unhandled "peripheralType_headerStructName" <$> peripheralType_headerStructName
                , unhandled "peripheralType_disableCondition" <$> peripheralType_disableCondition
-               , unhandled "peripheralType_size" <$> peripheralType_size
                , unhandled "peripheralType_access" <$> peripheralType_access
                , unhandled "peripheralType_protection" <$> peripheralType_protection
                , unhandled "peripheralType_resetValue" <$> peripheralType_resetValue
@@ -88,6 +88,7 @@ register RegisterType{..} =
         registerAccess = registerType_access
         registerResetValue = scaledNonNegativeIntegerToInt <$> registerType_resetValue
         registerResetMask = scaledNonNegativeIntegerToInt <$> registerType_resetMask
+        registerModifiedWriteValues = registerType_modifiedWriteValues
         registerDimension = dimension registerType_dim registerType_dimIncrement registerType_dimIndex
         Just (FieldsType fs) = registerType_fields -- :: Maybe FieldsType
         registerFields = map fld fs
@@ -97,7 +98,6 @@ register RegisterType{..} =
                , unhandled "registerType_dimArrayIndex" <$> registerType_dimArrayIndex
                , unhandled "registerType_protection" <$> registerType_protection
                , unhandled "registerType_dataType" <$> registerType_dataType
-               , unhandled "registerType_modifiedWriteValues" <$> registerType_modifiedWriteValues
                , unhandled "registerType_writeConstraint" <$> registerType_writeConstraint
                , unhandled "registerType_readAction" <$> registerType_readAction
                ]
