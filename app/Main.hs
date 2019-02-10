@@ -8,6 +8,7 @@ import Language.Rust.Pretty
 import System.Console.CmdArgs
 import Text.HTML.TagSoup
 import Control.Monad
+import Data.List (find)
 import Data.Maybe
 import System.IO
 
@@ -41,9 +42,13 @@ process Options{schema_version=True,..} fn = putStrLn . ((fn++": ")++) =<< getSc
 process Options{..} fn = do
         dev <- parseSVD fn
         let src :: SourceFile ()
-            src = SourceFile Nothing attributes $ preamble ++ concat [ peripheralDecl p | p  <- devicePeripherals dev ]
+            src = SourceFile Nothing attributes $ preamble ++ concat [ peripheralDecl (findPeripheral ps) p | p  <- ps ]
+            ps = devicePeripherals dev
         writeSourceFile stdout src
         putStrLn ""
+
+findPeripheral :: [Peripheral] -> String -> Maybe Peripheral
+findPeripheral ps s = find ((==s) . peripheralName) ps
 
 getSchemaVersion :: FilePath -> IO String
 getSchemaVersion fn = f . parseTags <$> readFile fn

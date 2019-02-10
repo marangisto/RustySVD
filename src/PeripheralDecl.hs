@@ -28,8 +28,8 @@ preamble =
           ] ()) ()
     ]
 
-peripheralDecl :: Peripheral -> [Item ()]
-peripheralDecl p = [ peripheralStruct p, peripheralFun p ]
+peripheralDecl :: (String -> Maybe Peripheral) -> Peripheral -> [Item ()]
+peripheralDecl findPeripheral p = [ peripheralStruct findPeripheral p, peripheralFun p ]
 
 removeMe = map (\r@Register{..} -> r {registerName = filter (/='%') registerName})
 
@@ -43,16 +43,17 @@ peripheralFun Peripheral{..} = Fn [] PublicV (mkIdent $ lowerCase peripheralName
     where name = mkIdent peripheralName
           addr = fromIntegral peripheralBaseAddress
 
-peripheralStruct :: Peripheral -> Item ()
-peripheralStruct Peripheral{..} = StructItem attributes PublicV (mkIdent peripheralName) variantData generics ()
-    where -- variantData = StructD [ registerStructField "xyz" "RW", reservedStructField "reserved_00" ] ()
-          variantData = StructD (map (either reservedStructField registerStructField) $ padRegisters $ removeMe rs) ()
+peripheralStruct :: (String -> Maybe Peripheral) -> Peripheral -> Item ()
+peripheralStruct findPeripheral Peripheral{..} = StructItem attributes PublicV (mkIdent peripheralName) variantData generics ()
+    where variantData = StructD (map (either reservedStructField registerStructField) $ padRegisters $ removeMe rs) ()
           generics = Generics [] [] whereClause ()
           whereClause = WhereClause [] ()
           attributes = [ Attribute Outer (Path False [PathSegment "repr" Nothing ()] ()) (delimTree Paren $ IdentTok "C") ()
                        , SugaredDoc Outer False (' ' : unwords (words peripheralDescription)) ()
                        ]
-          ([], rs) = partitionEithers peripheralRegisters
+          ([], rs) = partitionEithers $ maybe peripheralRegisters derive peripheralDerivedFrom
+          derive from | Just Peripheral{..} <- findPeripheral from = peripheralRegisters
+                      | otherwise = error $ "failed to derive peripheral from " ++ from
 
 padRegisters :: [Register] -> [Either Pad Register]
 padRegisters [] = []
